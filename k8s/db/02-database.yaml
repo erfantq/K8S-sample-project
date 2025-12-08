@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: user-system
+type: Opaque
+data:
+  username: YXBwdXNlcg==
+  password: YXBwcGFzcw==
+  rootpassword: cm9vdHBhc3M=
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: user-system
+spec:
+  ports:
+  - port: 3306
+  clusterIP: None 
+  selector:
+    app: mysql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: user-system
+spec:
+  serviceName: "db"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_DATABASE
+          value: "appdb"
+        - name: MYSQL_USER
+          valueFrom: { secretKeyRef: { name: db-secret, key: username } }
+        - name: MYSQL_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-secret, key: password } }
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-secret, key: rootpassword } }
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: db-data
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: db-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "fast-storage" 
+      resources:
+        requests:
+          storage: 1Gi

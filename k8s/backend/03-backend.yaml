@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: user-system
+data:
+  MYSQL_HOST: "mysql-0.db.user-system.svc.cluster.local"
+  MYSQL_PORT: "3306"
+  MYSQL_DATABASE: "appdb"
+  STUDENT_ID: "4012262209"
+  REDIS_HOST: "redis.user-system.svc.cluster.local"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: user-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: app
+        image: my-app:1.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: app-config
+        env:
+        - name: MYSQL_USER
+          valueFrom: { secretKeyRef: { name: db-secret, key: username } }
+        - name: MYSQL_PASSWORD
+          valueFrom: { secretKeyRef: { name: db-secret, key: password } }
+        livenessProbe:
+          httpGet: { path: /health, port: 5000 }
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet: { path: /health, port: 5000 }
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: user-system
+spec:
+  selector:
+    app: backend
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+  type: ClusterIP
