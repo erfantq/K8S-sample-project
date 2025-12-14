@@ -45,7 +45,7 @@ kind create cluster --name my-project
 # ساخت ایمیج اپلیکیشن (در روت پروژه)
 docker build -t my-app:1.0 ./app
 
-# بارگذاری ایمیج در کلاستر Kind (بسیار مهم)
+# بارگذاری ایمیج در کلاستر Kind
 kind load docker-image my-app:1.0 --name my-project
 ```
 
